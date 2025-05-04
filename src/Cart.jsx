@@ -1,6 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { submitOrder } from './api/menuApi';
 
 const Cart = ({ cart, setCart, onClose }) => {
+    
+    
+  const [message, setMessage] = useState(null);
   
   const handleRemoveItem = (itemId) => {
     setCart(currentCart => {
@@ -38,6 +42,36 @@ const Cart = ({ cart, setCart, onClose }) => {
     localStorage.removeItem('cartItems');
   };
 
+  const handleSubmitOrder = async () => {
+    setMessage(null);
+    const orderId = generateOrderId();
+    localStorage.setItem('orderId', orderId);
+
+    try {
+      const result = await submitOrder(cart);
+      setMessage({
+        text: `Order submitted successfully! Order ID: ${result.orderId}`,
+        type: 'success'
+      });
+      handleClearCart();
+      if(onClose) onClose()
+    } catch (error) {
+      setMessage({ text: 'Error submitting order', type: 'error' });
+    }
+  };
+
+  function generateOrderId() {
+    const now = new Date();
+    const timestamp = now.toISOString().replace(/[-:.]/g, '');
+    const random = Math.random().toString(36).substring(2, 8);
+    return `${timestamp}-${random}`;
+  }
+  
+  function generateOrderId() {
+    const now = new Date();
+    return `${now.getTime()}-${Math.random().toString(36).substring(2, 9)}`;
+}
+
   const totalPrice = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
   if (cart.length === 0) {
@@ -51,7 +85,7 @@ const Cart = ({ cart, setCart, onClose }) => {
   }
 
   return (
-    <div className="p-4">
+    <div className="p-4 relative">
         <button className="absolute top-2 right-2 text-gray-500 hover:text-gray-700" onClick={handleCloseCart}>×</button>
       <h2 className="text-lg font-bold mb-4">Cart</h2>
       <ul>
@@ -102,6 +136,17 @@ const Cart = ({ cart, setCart, onClose }) => {
         >
           Clear Cart
         </button>
+      </div>
+
+      <div className="mt-4 text-center">
+        <button
+          className={`bg-green-600 text-white px-4 py-2 rounded ${cart.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+          onClick={handleSubmitOrder}
+          disabled={cart.length === 0}
+        >
+          Submit Order
+        </button>
+        {message && <p className={`mt-2 ${message.type === 'error' ? 'text-red-600' : 'text-green-600'}`}>{message.text}</p>}
       </div>
     </div>
   );

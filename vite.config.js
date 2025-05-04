@@ -5,6 +5,8 @@ import tailwindcss from '@tailwindcss/vite'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  assetsInclude: ['**/*.jpg', '**/*.jpeg', '**/*.png', '**/*.webp']
-  
+  assetsInclude: ['**/*.jpg', '**/*.jpeg', '**/*.png', '**/*.webp'],
+  esbuild: {
+    jsxInject: `import React from 'react'` // Auto-injects React
+  }
 })

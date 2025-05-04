@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { Link } from '@tanstack/react-router'
 import { FiShoppingCart, FiArrowUp } from 'react-icons/fi'
 import { mockMenuData } from './data/mockData'
 import { debounce } from './utils/helpers';
@@ -15,6 +16,10 @@ export default function App() {
   const [isCartOpen, setIsCartOpen] = useState(cart.length > 0); // State for cart visibility
   const [itemCount, setItemCount] = useState(0); // New state for the number of items in the cart
   const cartRef = useRef(null);
+
+  const handleCloseCart = () => {
+    setIsCartOpen(false);
+  };
 
   useEffect(() => {
     const loadData = async () => {
@@ -162,6 +167,9 @@ export default function App() {
       <header className="sticky top-0 bg-white shadow-sm z-20">
         <div className="p-4 flex justify-between items-center">
           <h1 className="text-xl font-bold text-gray-800">FoodApp</h1>
+          <Link to="/order-history" className="mr-4 text-blue-500 hover:text-blue-700">
+            Order History
+          </Link>
           <button className="relative" onClick={toggleCart}> {/* Toggle cart visibility */}
             <FiShoppingCart className="text-2xl text-gray-700" />
             <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
@@ -281,7 +289,7 @@ export default function App() {
       {/* Conditionally render the Cart component */}
       <div ref={cartRef}>
         {cart.length > 0 && (
-          <Cart cart={cart} setCart={setCart} />
+          <Cart cart={cart} setCart={setCart} onClose={handleCloseCart} />
         )}
       </div>
 
