@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react';
 import { FiShoppingCart, FiArrowUp } from 'react-icons/fi'
 import { mockMenuData } from './data/mockData'
 import { debounce } from './utils/helpers';
