@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react'
 import { FiShoppingCart, FiArrowUp } from 'react-icons/fi'
 import { mockMenuData } from './data/mockData'
 import { debounce } from './utils/helpers';
@@ -12,7 +12,9 @@ export default function App() {
   const [activeCategory, setActiveCategory] = useState('')
   const [showScrollTop, setShowScrollTop] = useState(false)
   const [cart, setCart] = useState([]) // Initialize cart state
-  const [isCartOpen, setIsCartOpen] = useState(false); // State for cart visibility
+  const [isCartOpen, setIsCartOpen] = useState(cart.length > 0); // State for cart visibility
+  const [itemCount, setItemCount] = useState(0); // New state for the number of items in the cart
+  const cartRef = useRef(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -33,42 +35,52 @@ export default function App() {
     if (storedCart) {
       setCart(JSON.parse(storedCart));
     }
-    
+
     loadData()
   }, [])
 
-   // Scroll to top functionality
-   
-   useEffect(() => {
+  // useEffect to calculate the total number of items in the cart
+  useEffect(() => {
+    setItemCount(currentCount => {
+      const count = cart.reduce((acc, item) => acc + item.quantity, 0);
+      return count;
+    });
+
+    localStorage.setItem('cart', JSON.stringify(cart));
+  }, [cart])
+
+  // Scroll to top functionality
+
+  useEffect(() => {
     const headerHeight = document.querySelector('header')?.offsetHeight || 0;
-    const categoryElements = mockMenuData.categories.map(category => 
+    const categoryElements = mockMenuData.categories.map(category =>
       document.getElementById(category)
     ).filter(Boolean);
-  
+
     const handleScroll = () => {
       // Show/hide scroll to top button
       setShowScrollTop(window.scrollY > 500);
-  
+
       // Find active category
       const scrollPosition = window.scrollY + headerHeight + 10;
       let currentCategory = '';
-      
+
       categoryElements.forEach(element => {
         const { offsetTop, offsetHeight } = element;
         if (scrollPosition >= offsetTop && scrollPosition < offsetTop + offsetHeight) {
           currentCategory = element.id;
         }
       });
-  
+
       if (currentCategory && currentCategory !== activeCategory) {
         setActiveCategory(currentCategory);
       }
     };
-  
+
     const debouncedScroll = debounce(handleScroll, 50);
     window.addEventListener('scroll', debouncedScroll);
     handleScroll(); // Initial check
-  
+
     return () => window.removeEventListener('scroll', debouncedScroll);
   }, [loading, activeCategory, mockMenuData.categories]); // Add proper dependencies
 
@@ -78,7 +90,7 @@ export default function App() {
     if (element) {
       element.scrollIntoView({
         behavior: 'smooth',
-        block: 'start'
+        block: 'end'
       })
     }
   }
@@ -90,18 +102,57 @@ export default function App() {
     })
   }
 
+  const handleQuantityChange = (itemId, delta) => {
+    setCart(currentCart => {
+      const updatedCart = currentCart.map(item => {
+        if (item.id === itemId) {
+          const newQuantity = item.quantity + delta;
+          if (newQuantity < 1) {
+            return null; // Mark for removal
+          } else {
+            return { ...item, quantity: newQuantity };
+          }
+        }
+        return item;
+      }).filter(item => item !== null); // Remove marked items
+      localStorage.setItem('cart', JSON.stringify(updatedCart));
+      return updatedCart;
+    });
+  };
+
   const addToCart = (item) => {
     setCart(prevCart => {
-      const updatedCart = [...prevCart, item];
+      const existingItemIndex = prevCart.findIndex(cartItem => cartItem.id === item.id);
+
+      let updatedCart;
+      if (existingItemIndex > -1) {
+        // Item exists, update quantity
+        updatedCart = prevCart.map((cartItem, index) =>
+          index === existingItemIndex
+            ? { ...cartItem, quantity: cartItem.quantity + 1 }
+            : cartItem
+        );
+      } else {
+        // Item does not exist, add with quantity 1
+        updatedCart = [...prevCart, { ...item, quantity: 1 }];
+      }
+
       localStorage.setItem('cart', JSON.stringify(updatedCart));
       return updatedCart;
     });
   };
 
   const toggleCart = () => {
-    setIsCartOpen(!isCartOpen);
+    if (cart.length > 0) {
+      if (cartRef.current) {
+        cartRef.current.scrollIntoView({
+          behavior: 'smooth',
+          block: 'end'
+        });
+      }
+    }
   };
-  
+
   if (error) return <div className="p-4 text-red-500">Error: {error}</div>
 
   if (loading) return <div className="p-4">Loading...</div>
@@ -114,7 +165,7 @@ export default function App() {
           <button className="relative" onClick={toggleCart}> {/* Toggle cart visibility */}
             <FiShoppingCart className="text-2xl text-gray-700" />
             <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
-              {cart.length}
+              {itemCount}
             </span>
           </button>
         </div>
@@ -124,7 +175,7 @@ export default function App() {
           <div className="flex overflow-x-auto px-4 hide-scrollbar">
             {loading ? (
               [...Array(4)].map((_, i) => (
-                <div 
+                <div
                   key={i}
                   className="h-10 w-24 bg-gray-200 animate-pulse rounded-full mr-2"
                 />
@@ -134,11 +185,10 @@ export default function App() {
                 <button
                   key={category}
                   onClick={() => scrollToCategory(category)}
-                  className={`shrink-0 px-4 py-2 mr-2 rounded-full transition-colors ${
-                    activeCategory === category
+                  className={`shrink-0 px-4 py-2 mr-2 rounded-full transition-colors ${activeCategory === category
                       ? 'bg-blue-500 text-white'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
+                    }`}
                 >
                   {category}
                 </button>
@@ -156,7 +206,7 @@ export default function App() {
               <div className="h-6 w-32 bg-gray-200 animate-pulse rounded mb-4"></div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {[...Array(3)].map((_, itemIdx) => (
-                  <div 
+                  <div
                     key={itemIdx}
                     className="h-48 bg-gray-200 animate-pulse rounded-lg"
                   />
@@ -167,38 +217,61 @@ export default function App() {
         ) : (
           // Actual menu content
           menu.categories.map((category) => (
-            <section key={category} 
+            <section key={category}
               id={category}
               className="mb-8 scroll-mt-24">
               <h2 className="text-2xl font-bold text-gray-800 mb-4">{category}</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {menu.items
                   .filter(item => item.category === category)
-                  .map(item => (
-                    <div 
-                      key={item.id}
-                      className="bg-white p-4 rounded-lg shadow-sm hover:shadow-md transition-shadow"
-                    >
-                      <img
-                        src={item.image}
-                        alt={item.name}
-                        className="w-full h-48 object-cover rounded-lg mb-4"
-                      />
-                      <h3 className="font-semibold text-gray-800">{item.name}</h3>
-                      <p className="text-gray-600 text-sm mt-1">{item.description}</p>
-                      <div className="mt-4 flex justify-between items-center">
-                        <span className="text-lg font-bold text-blue-600">
-                          ${item.price.toFixed(2)}
-                        </span>
-                        <button 
-                          className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
-                          onClick={() => addToCart(item)}
-                        >
-                          Agregar
-                        </button>
+                  .map(item => {
+                    const cartItem = cart.find(cartItem => cartItem.id === item.id);
+                    const quantity = cartItem ? cartItem.quantity : 0;
+
+                    return (
+                      <div
+                        key={item.id}
+                        className="bg-white p-4 rounded-lg shadow-sm hover:shadow-md transition-shadow"
+                      >
+                        <img
+                          src={item.image}
+                          alt={item.name}
+                          className="w-full h-48 object-cover rounded-lg mb-4"
+                        />
+                        <h3 className="font-semibold text-gray-800">{item.name}</h3>
+                        <p className="text-gray-600 text-sm mt-1">{item.description}</p>
+                        <div className="mt-4 flex justify-between items-center">
+                          <span className="text-lg font-bold text-blue-600">
+                            ${item.price.toFixed(2)}
+                          </span>
+                          {quantity > 0 ? (
+                            <div className="flex items-center">
+                              <button
+                                className="bg-gray-300 text-gray-800 px-2 py-1 rounded-l"
+                                onClick={() => handleQuantityChange(item.id, -1)}
+                              >
+                                -
+                              </button>
+                              <span className="w-12 text-center border-t border-b px-1 py-1">{quantity}</span>
+                              <button
+                                className="bg-gray-300 text-gray-800 px-2 py-1 rounded-r"
+                                onClick={() => handleQuantityChange(item.id, 1)}
+                              >
+                                +
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
+                              onClick={() => addToCart(item)}
+                            >
+                              Agregar
+                            </button>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
               </div>
             </section>
           ))
@@ -206,10 +279,12 @@ export default function App() {
       </main>
 
       {/* Conditionally render the Cart component */}
-      {isCartOpen && (
-        <Cart cart={cart} setCart={setCart} />
-      )}
-      
+      <div ref={cartRef}>
+        {cart.length > 0 && (
+          <Cart cart={cart} setCart={setCart} />
+        )}
+      </div>
+
       {/* Scroll to Top Button */}
       {showScrollTop && (
         <button
