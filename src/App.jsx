@@ -1,13 +1,14 @@
 import { useState, useEffect, useRef } from 'react'
-import { Link } from '@tanstack/react-router'
+import { BrowserRouter as Router, Route, Routes, Link } from 'react-router-dom';
 import { FiShoppingCart, FiArrowUp } from 'react-icons/fi'
 import { mockMenuData } from './data/mockData'
 import { debounce } from './utils/helpers';
 import Cart from './Cart'; // Import the Cart component
-
+import { ensureToken } from './api/menuApi';
+import OrderHistory from './OrderHistory';
 
 export default function App() {
-  const [menu, setMenu] = useState({ categories: [], items: [] })
+  const [menu, setMenu] = useState(mockMenuData);
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [activeCategory, setActiveCategory] = useState('')
@@ -15,34 +16,49 @@ export default function App() {
   const [cart, setCart] = useState([]) // Initialize cart state
   const [isCartOpen, setIsCartOpen] = useState(cart.length > 0); // State for cart visibility
   const [itemCount, setItemCount] = useState(0); // New state for the number of items in the cart
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const cartRef = useRef(null);
 
   const handleCloseCart = () => {
     setIsCartOpen(false);
   };
 
+  const toggleMenu = () => {
+    setIsMenuOpen(!isMenuOpen);
+  };
+
   useEffect(() => {
-    const loadData = async () => {
+    const initializeApp = async () => {
       try {
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 1500))
-        setMenu(mockMenuData)
-        setActiveCategory(mockMenuData.categories[0]) // Set the first category as active
+        await ensureToken(); // Ensure the anonymous token is available
+        const loadData = async () => {
+          try {
+            // Simulate API delay
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            setMenu(mockMenuData);
+            setActiveCategory(mockMenuData.categories[0]); // Set the first category as active
+          } catch (err) {
+            setError('Failed to load menu: ' + err.message);
+          } finally {
+            setLoading(false);
+          }
+        };
+
+        // Load cart data from local storage
+        const storedCart = localStorage.getItem('cart');
+        if (storedCart) {
+          setCart(JSON.parse(storedCart));
+        }
+
+        loadData();
       } catch (err) {
-        setError('Failed to load menu: ' + err.message)
-      } finally {
-        setLoading(false)
+        setError('Failed to initialize app: ' + err.message);
       }
-    }
+    };
 
-    // Load cart data from local storage
-    const storedCart = localStorage.getItem('cart');
-    if (storedCart) {
-      setCart(JSON.parse(storedCart));
-    }
-
-    loadData()
-  }, [])
+    // Ensure this runs only after the component has mounted
+    setTimeout(() => initializeApp(), 0);
+  }, []);
 
   // useEffect to calculate the total number of items in the cart
   useEffect(() => {
@@ -163,146 +179,165 @@ export default function App() {
   if (loading) return <div className="p-4">Loading...</div>
 
   return (
-    <div className="min-h-screen">
-      <header className="sticky top-0 bg-white shadow-sm z-20">
-        <div className="p-4 flex justify-between items-center">
-          <h1 className="text-xl font-bold text-gray-800">FoodApp</h1>
-          <Link to="/order-history" className="mr-4 text-blue-500 hover:text-blue-700">
-            Order History
-          </Link>
-          <button className="relative" onClick={toggleCart}> {/* Toggle cart visibility */}
-            <FiShoppingCart className="text-2xl text-gray-700" />
-            <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
-              {itemCount}
-            </span>
-          </button>
-        </div>
-
-        {/* Category Navigation Ribbon */}
-        <div className="border-t bg-white sticky top-14 z-10">
-          <div className="flex overflow-x-auto px-4 hide-scrollbar">
-            {loading ? (
-              [...Array(4)].map((_, i) => (
-                <div
-                  key={i}
-                  className="h-10 w-24 bg-gray-200 animate-pulse rounded-full mr-2"
-                />
-              ))
-            ) : (
-              menu.categories.map((category) => (
-                <button
-                  key={category}
-                  onClick={() => scrollToCategory(category)}
-                  className={`shrink-0 px-4 py-2 mr-2 rounded-full transition-colors ${activeCategory === category
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                >
-                  {category}
-                </button>
-              ))
+    <Router>
+      <div className="min-h-screen">
+        <header className="sticky top-0 bg-white shadow-sm z-20">
+          <div className="p-4 flex justify-between items-center">
+            <button className="burger-icon" onClick={toggleMenu}>
+              ☰
+            </button>
+            {isMenuOpen && (
+              <nav className="menu">
+                <ul>
+                  <li><Link to="/">Order</Link></li>
+                  <li><Link to="/order-history">Order History</Link></li>
+                  <li><Link to="/login">Login</Link></li>
+                </ul>
+              </nav>
             )}
+            <h1 className="text-xl font-bold text-gray-800">FoodApp</h1>
+            <Link to="/order-history" className="mr-4 text-blue-500 hover:text-blue-700">
+              Order History
+            </Link>
+            <button className="relative" onClick={toggleCart}> {/* Toggle cart visibility */}
+              <FiShoppingCart className="text-2xl text-gray-700" />
+              <span className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                {itemCount}
+              </span>
+            </button>
           </div>
-        </div>
-      </header>
 
-      <main className="p-4">
-        {loading ? (
-          // Loading skeletons
-          [...Array(4)].map((_, catIdx) => (
-            <div key={catIdx} className="mb-8">
-              <div className="h-6 w-32 bg-gray-200 animate-pulse rounded mb-4"></div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {[...Array(3)].map((_, itemIdx) => (
+          {/* Category Navigation Ribbon */}
+          <div className="border-t bg-white sticky top-14 z-10">
+            <div className="flex overflow-x-auto px-4 hide-scrollbar">
+              {loading ? (
+                [...Array(4)].map((_, i) => (
                   <div
-                    key={itemIdx}
-                    className="h-48 bg-gray-200 animate-pulse rounded-lg"
+                    key={i}
+                    className="h-10 w-24 bg-gray-200 animate-pulse rounded-full mr-2"
                   />
-                ))}
-              </div>
+                ))
+              ) : (
+                menu.categories.map((category) => (
+                  <button
+                    key={category}
+                    onClick={() => scrollToCategory(category)}
+                    className={`shrink-0 px-4 py-2 mr-2 rounded-full transition-colors ${activeCategory === category
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                  >
+                    {category}
+                  </button>
+                ))
+              )}
             </div>
-          ))
-        ) : (
-          // Actual menu content
-          menu.categories.map((category) => (
-            <section key={category}
-              id={category}
-              className="mb-8 scroll-mt-24">
-              <h2 className="text-2xl font-bold text-gray-800 mb-4">{category}</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {menu.items
-                  .filter(item => item.category === category)
-                  .map(item => {
-                    const cartItem = cart.find(cartItem => cartItem.id === item.id);
-                    const quantity = cartItem ? cartItem.quantity : 0;
+          </div>
+        </header>
 
-                    return (
-                      <div
-                        key={item.id}
-                        className="bg-white p-4 rounded-lg shadow-sm hover:shadow-md transition-shadow"
-                      >
-                        <img
-                          src={item.image}
-                          alt={item.name}
-                          className="w-full h-48 object-cover rounded-lg mb-4"
-                        />
-                        <h3 className="font-semibold text-gray-800">{item.name}</h3>
-                        <p className="text-gray-600 text-sm mt-1">{item.description}</p>
-                        <div className="mt-4 flex justify-between items-center">
-                          <span className="text-lg font-bold text-blue-600">
-                            ${item.price.toFixed(2)}
-                          </span>
-                          {quantity > 0 ? (
-                            <div className="flex items-center">
-                              <button
-                                className="bg-gray-300 text-gray-800 px-2 py-1 rounded-l"
-                                onClick={() => handleQuantityChange(item.id, -1)}
-                              >
-                                -
-                              </button>
-                              <span className="w-12 text-center border-t border-b px-1 py-1">{quantity}</span>
-                              <button
-                                className="bg-gray-300 text-gray-800 px-2 py-1 rounded-r"
-                                onClick={() => handleQuantityChange(item.id, 1)}
-                              >
-                                +
-                              </button>
-                            </div>
-                          ) : (
-                            <button
-                              className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
-                              onClick={() => addToCart(item)}
-                            >
-                              Agregar
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    )
-                  })}
+        <main className="p-4">
+          {loading ? (
+            // Loading skeletons
+            [...Array(4)].map((_, catIdx) => (
+              <div key={catIdx} className="mb-8">
+                <div className="h-6 w-32 bg-gray-200 animate-pulse rounded mb-4"></div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {[...Array(3)].map((_, itemIdx) => (
+                    <div
+                      key={itemIdx}
+                      className="h-48 bg-gray-200 animate-pulse rounded-lg"
+                    />
+                  ))}
+                </div>
               </div>
-            </section>
-          ))
-        )}
-      </main>
+            ))
+          ) : (
+            // Actual menu content
+            menu.categories.map((category) => (
+              <section key={category}
+                id={category}
+                className="mb-8 scroll-mt-24">
+                <h2 className="text-2xl font-bold text-gray-800 mb-4">{category}</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {menu.items
+                    .filter(item => item.category === category)
+                    .map(item => {
+                      const cartItem = cart.find(cartItem => cartItem.id === item.id);
+                      const quantity = cartItem ? cartItem.quantity : 0;
 
-      {/* Conditionally render the Cart component */}
-      <div ref={cartRef}>
-        {cart.length > 0 && (
-          <Cart cart={cart} setCart={setCart} onClose={handleCloseCart} />
+                      return (
+                        <div
+                          key={item.id}
+                          className="bg-white p-4 rounded-lg shadow-sm hover:shadow-md transition-shadow"
+                        >
+                          <img
+                            src={item.image}
+                            alt={item.name}
+                            className="w-full h-48 object-cover rounded-lg mb-4"
+                          />
+                          <h3 className="font-semibold text-gray-800">{item.name}</h3>
+                          <p className="text-gray-600 text-sm mt-1">{item.description}</p>
+                          <div className="mt-4 flex justify-between items-center">
+                            <span className="text-lg font-bold text-blue-600">
+                              ${item.price.toFixed(2)}
+                            </span>
+                            {quantity > 0 ? (
+                              <div className="flex items-center">
+                                <button
+                                  className="bg-gray-300 text-gray-800 px-2 py-1 rounded-l"
+                                  onClick={() => handleQuantityChange(item.id, -1)}
+                                >
+                                  -
+                                </button>
+                                <span className="w-12 text-center border-t border-b px-1 py-1">{quantity}</span>
+                                <button
+                                  className="bg-gray-300 text-gray-800 px-2 py-1 rounded-r"
+                                  onClick={() => handleQuantityChange(item.id, 1)}
+                                >
+                                  +
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
+                                onClick={() => addToCart(item)}
+                              >
+                                Agregar
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                </div>
+              </section>
+            ))
+          )}
+        </main>
+
+        {/* Conditionally render the Cart component */}
+        <div ref={cartRef}>
+          {cart.length > 0 && (
+            <Cart cart={cart} setCart={setCart} onClose={handleCloseCart} />
+          )}
+        </div>
+
+        {/* Scroll to Top Button */}
+        {showScrollTop && (
+          <button
+            onClick={scrollToTop}
+            className="fixed bottom-4 right-4 bg-blue-500 text-white p-3 rounded-full shadow-lg hover:bg-blue-600 transition-colors"
+          >
+            <FiArrowUp className="text-xl" />
+          </button>
         )}
+
+        <Routes>
+          <Route path="/" element={<Cart />} />
+          <Route path="/order-history" element={<OrderHistory />} />
+          <Route path="/login" element={<div>Login (Fake)</div>} />
+        </Routes>
       </div>
-
-      {/* Scroll to Top Button */}
-      {showScrollTop && (
-        <button
-          onClick={scrollToTop}
-          className="fixed bottom-4 right-4 bg-blue-500 text-white p-3 rounded-full shadow-lg hover:bg-blue-600 transition-colors"
-        >
-          <FiArrowUp className="text-xl" />
-        </button>
-      )}
-
-    </div>
+    </Router>
   )
 }

@@ -5,6 +5,7 @@ import OrderCard from './OrderCard';
 import OrderCardSkeleton from './OrderCardSkeleton';
 import { useOrderHistoryStore } from './store/orderHistoryStore';
 import RefreshButton from './RefreshButton'; // Import RefreshButton
+import { useNavigate } from 'react-router-dom'; // Import useNavigate
 
 const fetchOrders = async (): Promise<Order[]> => {
   return new Promise((resolve) => setTimeout(() => resolve(mockOrders), 500));
@@ -12,6 +13,7 @@ const fetchOrders = async (): Promise<Order[]> => {
 
 
 const OrderHistory: React.FC = () => {
+    const navigate = useNavigate(); // Initialize navigate
     const { orders, setOrders } = useOrderHistoryStore((state) => state);
 
     const queryOptions: UseQueryOptions<Order[]> = {
@@ -33,6 +35,7 @@ const OrderHistory: React.FC = () => {
         return (
             <div className="p-4">
                 <h1 className="text-2xl font-bold mb-4">Order History</h1>
+                <button onClick={() => navigate(-1)} className="mb-4 px-4 py-2 bg-blue-500 text-white rounded">Go Back</button>
                 <RefreshButton onClick={handleRefresh} className="mb-4" />
                 <div className="space-y-4">
                     <OrderCardSkeleton />
@@ -52,6 +55,7 @@ const OrderHistory: React.FC = () => {
               <div className="flex flex-col items-center justify-center h-full p-4">
                   <div className="w-48 h-48 bg-gray-200 rounded-full mb-4" />
                   <p className="text-gray-600">No recent orders...</p>
+                  <button onClick={() => navigate(-1)} className="mb-4 px-4 py-2 bg-blue-500 text-white rounded">Go Back</button>
                   <RefreshButton onClick={handleRefresh} />
               </div>
           );
@@ -62,6 +66,7 @@ const OrderHistory: React.FC = () => {
     return (
         <div className="p-4">
             <h1 className="text-2xl font-bold mb-4">Order History</h1>
+            <button onClick={() => navigate(-1)} className="mb-4 px-4 py-2 bg-blue-500 text-white rounded">Go Back</button>
             <RefreshButton onClick={handleRefresh} className="mb-4" />
             <div className="space-y-4">
                 {sortedOrders.map((order) => (

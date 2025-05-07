@@ -152,6 +152,7 @@ const Cart = ({ cart, setCart, onClose }) => {
   );
 };
 Cart.defaultProps = {
+  cart: [], // Default cart to an empty array
   onClose: () => {},
 };
 export default Cart;
