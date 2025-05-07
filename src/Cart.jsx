@@ -72,9 +72,9 @@ const Cart = ({ cart, setCart, onClose }) => {
     return `${now.getTime()}-${Math.random().toString(36).substring(2, 9)}`;
 }
 
-  const totalPrice = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const totalPrice = Array.isArray(cart) ? cart.reduce((sum, item) => sum + item.price * item.quantity, 0) : 0;
 
-  if (cart.length === 0) {
+  if (!Array.isArray(cart) || cart.length === 0) {
     return (
       <div className="p-4 text-center relative">
         <button className="absolute top-2 right-2 text-gray-500 hover:text-gray-700" onClick={handleCloseCart}>×</button>
