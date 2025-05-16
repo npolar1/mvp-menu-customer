@@ -12,7 +12,7 @@ const submitOrder = (order) => {
     return new Promise((resolve, reject) => {
     
     const orderId = Math.random().toString(36).substring(2, 9).toUpperCase(); // Generate a random order ID
-    const isSuccess = true //Math.random() > 0.5;  Randomly determine success or failure
+    const isSuccess = false //Math.random() > 0.5;  Randomly determine success or failure
     setTimeout(() => {
       if (isSuccess) {
         resolve({

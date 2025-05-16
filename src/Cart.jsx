@@ -72,9 +72,9 @@ const Cart = ({ cart, setCart, onClose }) => {
     return `${now.getTime()}-${Math.random().toString(36).substring(2, 9)}`;
 }
 
-  const totalPrice = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const totalPrice = Array.isArray(cart) ? cart.reduce((sum, item) => sum + item.price * item.quantity, 0) : 0;
 
-  if (cart.length === 0) {
+  if (!Array.isArray(cart) || cart.length === 0) {
     return (
       <div className="p-4 text-center relative">
         <button className="absolute top-2 right-2 text-gray-500 hover:text-gray-700" onClick={handleCloseCart}>×</button>
@@ -86,7 +86,6 @@ const Cart = ({ cart, setCart, onClose }) => {
 
   return (
     <div className="p-4 relative">
-        <button className="absolute top-2 right-2 text-gray-500 hover:text-gray-700" onClick={handleCloseCart}>×</button>
       <h2 className="text-lg font-bold mb-4">Cart</h2>
       <ul>
         {cart.map(item => (
@@ -129,30 +128,43 @@ const Cart = ({ cart, setCart, onClose }) => {
         <span>Total:</span>
         <span>${totalPrice.toFixed(2)}</span>
       </div>
-      <div className="mt-4 text-center">
-        <button
-          className="bg-red-600 text-white px-4 py-2 rounded"
-          onClick={handleClearCart}
-        >
-          Clear Cart
-        </button>
-      </div>
 
-      <div className="mt-4 text-center">
-        <button
-          className={`bg-green-600 text-white px-4 py-2 rounded ${cart.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
-          onClick={handleSubmitOrder}
-          disabled={cart.length === 0}
+
+
+      <div className="flex justify-between mt-4"> {/* Parent container */}
+        {/* Clear Cart Button (left-aligned) */}
+        <div className="flex-1 text-center">
+          <button
+            className="bg-red-600 text-white px-4 py-2 rounded"
+            onClick={handleClearCart}
+          >
+            Clear Cart
+          </button>
+        </div>
+        {/* Submit Order Button (right-aligned) */}
+        <div className="flex-1 text-center">
+          <button
+            className={`bg-green-600 text-white px-4 py-2 rounded ${cart.length === 0 ? "opacity-50 cursor-not-allowed" : ""
+              }`}
+            onClick={handleSubmitOrder}
+            disabled={cart.length === 0}
+          >
+            Submit Order
+          </button>
+        </div>
+      </div><div> {message && (
+        <p
+          className={`mt-2 ${message.type === "error" ? "text-red-600" : "text-green-600"
+            }`}
         >
-          Submit Order
-        </button>
-        {message && <p className={`mt-2 ${message.type === 'error' ? 'text-red-600' : 'text-green-600'}`}>{message.text}</p>}
-      </div>
+          {message.text}
+        </p>
+      )} </div>
     </div>
   );
 };
 Cart.defaultProps = {
   cart: [], // Default cart to an empty array
-  onClose: () => {},
+  onClose: () => { },
 };
 export default Cart;
